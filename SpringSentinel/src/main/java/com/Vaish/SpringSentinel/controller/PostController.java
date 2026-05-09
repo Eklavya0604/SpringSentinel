@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -29,16 +30,15 @@ public class PostController {
     private final PostService postService;
     private final RedisService redisService;
 
+    // ── Create post ─────────────────────────────────────────────
     @Operation(
             summary = "Create a post",
-            description = "Creates a new post by a user or bot",
+            description = "Creates a new post. authorId and authorType are resolved from JWT automatically.",
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(value = """
                     {
-                      "authorId": 1,
-                      "authorType": "USER",
                       "content": "Hello World! This is my first post."
                     }
                 """)
@@ -51,14 +51,23 @@ public class PostController {
             }
     )
     @PostMapping
-    public ResponseEntity<Post> createPost(@Valid @RequestBody Post post) {
-        return ResponseEntity.ok(postService.createPost(post));
+    public ResponseEntity<Post> createPost(
+            @Valid @RequestBody Post post,
+            @AuthenticationPrincipal String username) {
+        return ResponseEntity.ok(postService.createPost(post, username));
     }
 
+    // ── Add comment ─────────────────────────────────────────────
     @Operation(
             summary = "Add a comment",
             description = """
-            Adds a comment to a post. Bot comments trigger Redis guardrails:
+            Adds a comment to a post.
+            - USER comments: authorId resolved from JWT automatically
+            - BOT comments: authorId must be provided in body (bot ID)
+            - parentCommentId: null for top level, set to a comment ID to reply
+            - depthLevel: calculated server-side, do not send
+            
+            Bot comments trigger Redis guardrails:
             - Horizontal Cap: Max 100 bot replies per post
             - Vertical Cap: Max depth level 20
             - Cooldown Cap: Same bot cannot comment on same user's post within 10 minutes
@@ -68,24 +77,33 @@ public class PostController {
                             mediaType = "application/json",
                             examples = {
                                     @ExampleObject(
-                                            name = "Bot Comment",
+                                            name = "Bot Comment (top level)",
                                             value = """
                             {
                               "authorId": 1,
                               "authorType": "BOT",
                               "content": "Nice post!",
-                              "depthLevel": 1
+                              "parentCommentId": null
                             }
                         """
                                     ),
                                     @ExampleObject(
-                                            name = "Human Comment",
+                                            name = "Human Comment (top level)",
                                             value = """
                             {
-                              "authorId": 1,
                               "authorType": "USER",
                               "content": "Great content!",
-                              "depthLevel": 1
+                              "parentCommentId": null
+                            }
+                        """
+                                    ),
+                                    @ExampleObject(
+                                            name = "Human Reply (nested)",
+                                            value = """
+                            {
+                              "authorType": "USER",
+                              "content": "Replying to your comment!",
+                              "parentCommentId": 1
                             }
                         """
                                     )
@@ -103,13 +121,16 @@ public class PostController {
     public ResponseEntity<Comment> addComment(
             @Parameter(description = "Post ID", example = "1")
             @PathVariable Long postId,
-            @Valid @RequestBody Comment comment) {
-        return ResponseEntity.ok(postService.addComment(postId, comment));
+            @Valid @RequestBody Comment comment,
+            @AuthenticationPrincipal String username) {
+        return ResponseEntity.ok(
+                postService.addComment(postId, comment, username));
     }
 
+    // ── Like post ────────────────────────────────────────────────
     @Operation(
             summary = "Like a post",
-            description = "Human like adds +20 virality points. Bot like adds +1 point.",
+            description = "Like a post as the currently logged in user. Adds +20 virality points.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Like registered"),
                     @ApiResponse(responseCode = "401", description = "Unauthorized - JWT required")
@@ -119,17 +140,17 @@ public class PostController {
     public ResponseEntity<String> likePost(
             @Parameter(description = "Post ID", example = "1")
             @PathVariable Long postId,
-            @Parameter(description = "Type of liker", example = "USER")
-            @RequestParam String likerType) {
-        postService.likePost(postId, likerType);
+            @AuthenticationPrincipal String username) {
+        postService.likePost(postId, username);
         return ResponseEntity.ok("Like registered");
     }
 
+    // ── Virality score ───────────────────────────────────────────
     @Operation(
             summary = "Get virality score",
             description = """
             Returns the real-time virality score from Redis.
-            Score = (Bot replies × 1) + (Human likes × 20) + (Human comments × 50)
+            Score = (Bot replies x 1) + (Human likes x 20) + (Human comments x 50)
             """,
             responses = {
                     @ApiResponse(responseCode = "200", description = "Virality score returned"),

@@ -4,6 +4,7 @@ import com.Vaish.SpringSentinel.filter.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,11 +15,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
-    private final RateLimitFilter rateLimitFilter; // ← Add this
+    private final RateLimitFilter rateLimitFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -28,16 +30,14 @@ public class SecurityConfig {
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
-                        )
-                )
+                                SessionCreationPolicy.STATELESS))
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // ── Public Auth Endpoints ────────────────────
+                        // ── Public Auth Endpoints ────────────────
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // ── Swagger / OpenAPI ────────────────────────
+                        // ── Swagger / OpenAPI ────────────────────
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -48,19 +48,20 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
 
-                        // ── Everything else needs JWT ────────────────
+                        // ── Admin-only: Bot management ───────────
+                        .requestMatchers("/api/bots/**").hasRole("ADMIN")
+
+                        // ── Everything else needs JWT ────────────
                         .anyRequest().authenticated()
                 )
 
-                // ── Filter Order: RateLimit → JWT → Controller ───
+                // ── Filter Order: RateLimit → JWT → Controller ──
                 .addFilterBefore(
                         rateLimitFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                )
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(
                         jwtFilter,
-                        RateLimitFilter.class  // JWT runs after rate limit
-                );
+                        RateLimitFilter.class);
 
         return http.build();
     }

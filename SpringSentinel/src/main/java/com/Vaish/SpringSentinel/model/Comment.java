@@ -1,8 +1,8 @@
 package com.Vaish.SpringSentinel.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import java.time.LocalDateTime;
@@ -11,18 +11,20 @@ import java.time.LocalDateTime;
 @Table(name = "comments")
 @Data
 public class Comment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // set by server — never from client
     @Column(name = "post_id", nullable = false)
     private Long postId;
 
-    @NotNull(message = "Author ID cannot be null")
+    // set by server from JWT (USER) or request body (BOT)
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 
-    @NotBlank(message = "Author type cannot be empty")
+    // USER or BOT — client sends this
     @Column(name = "author_type")
     private String authorType;
 
@@ -31,6 +33,12 @@ public class Comment {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    // null = top level comment, set by client to reply to a comment
+    @Column(name = "parent_comment_id")
+    private Long parentCommentId;
+
+    // calculated server-side — client can never overwrite this
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @Column(name = "depth_level")
     private int depthLevel = 0;
 
