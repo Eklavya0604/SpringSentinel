@@ -7,7 +7,6 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -20,17 +19,17 @@ public class RedisService {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    // ============================================================
-    // CACHED LUA SCRIPTS (created once, reused on every call)
-    // ============================================================
-
-    private static final DefaultRedisScript<Long> INCREMENT_BOT_SCRIPT;
-    private static final DefaultRedisScript<List> POP_NOTIFS_SCRIPT;
+    // ── Cached Lua scripts ───────────────────────────────────────
+    private static final DefaultRedisScript<Long>
+            INCREMENT_BOT_SCRIPT;
+    private static final DefaultRedisScript<List>
+            POP_NOTIFS_SCRIPT;
 
     static {
         INCREMENT_BOT_SCRIPT = new DefaultRedisScript<>();
         INCREMENT_BOT_SCRIPT.setScriptText(
-                "local current = tonumber(redis.call('GET', KEYS[1])) or 0 " +
+                "local current = " +
+                        "tonumber(redis.call('GET', KEYS[1])) or 0 " +
                         "if current < tonumber(ARGV[1]) then " +
                         "   redis.call('INCR', KEYS[1]) " +
                         "   return 1 " +
@@ -42,37 +41,31 @@ public class RedisService {
 
         POP_NOTIFS_SCRIPT = new DefaultRedisScript<>();
         POP_NOTIFS_SCRIPT.setScriptText(
-                "local messages = redis.call('LRANGE', KEYS[1], 0, -1) " +
+                "local messages = " +
+                        "redis.call('LRANGE', KEYS[1], 0, -1) " +
                         "redis.call('DEL', KEYS[1]) " +
                         "return messages"
         );
         POP_NOTIFS_SCRIPT.setResultType(List.class);
     }
 
-    // ============================================================
-    // VIRALITY SCORE
-    // ============================================================
-
+    // ── Virality ─────────────────────────────────────────────────
     public void incrementVirality(Long postId, int points) {
         redisTemplate.opsForValue().increment(
-                "post:" + postId + ":virality_score", points
-        );
+                "post:" + postId + ":virality_score", points);
     }
 
     public String getVirality(Long postId) {
         return redisTemplate.opsForValue().get(
-                "post:" + postId + ":virality_score"
-        );
+                "post:" + postId + ":virality_score");
     }
 
-    // ============================================================
-    // ATOMIC HORIZONTAL CAP (Lua script)
-    // ============================================================
-
+    // ── Horizontal Cap ───────────────────────────────────────────
     public boolean tryIncrementBotCount(Long postId, int cap) {
         Long result = redisTemplate.execute(
                 INCREMENT_BOT_SCRIPT,
-                Collections.singletonList("post:" + postId + ":bot_count"),
+                Collections.singletonList(
+                        "post:" + postId + ":bot_count"),
                 String.valueOf(cap)
         );
         return Long.valueOf(1L).equals(result);
@@ -83,94 +76,71 @@ public class RedisService {
                 .decrement("post:" + postId + ":bot_count");
     }
 
-    // ============================================================
-    // COOLDOWN CAP (atomic setIfAbsent = SET NX EX)
-    // ============================================================
-
+    // ── Cooldown Cap ─────────────────────────────────────────────
     public boolean trySetCooldown(Long botId, Long humanId) {
-        Boolean success = redisTemplate.opsForValue().setIfAbsent(
-                "cooldown:bot_" + botId + ":human_" + humanId,
-                "1", 10, TimeUnit.MINUTES
-        );
+        Boolean success = redisTemplate.opsForValue()
+                .setIfAbsent(
+                        "cooldown:bot_" + botId + ":human_" + humanId,
+                        "1", 10, TimeUnit.MINUTES);
         return Boolean.TRUE.equals(success);
     }
 
     public void removeCooldown(Long botId, Long humanId) {
         redisTemplate.delete(
-                "cooldown:bot_" + botId + ":human_" + humanId
-        );
+                "cooldown:bot_" + botId + ":human_" + humanId);
     }
 
     public boolean isCooldownActive(Long botId, Long humanId) {
         return Boolean.TRUE.equals(
                 redisTemplate.hasKey(
-                        "cooldown:bot_" + botId + ":human_" + humanId
-                )
-        );
+                        "cooldown:bot_" + botId + ":human_" + humanId));
     }
 
-    // ============================================================
-    // NOTIFICATION THROTTLING (atomic setIfAbsent)
-    // ============================================================
-
+    // ── Notification Throttling ──────────────────────────────────
     public boolean trySetNotificationCooldown(Long userId) {
-        Boolean success = redisTemplate.opsForValue().setIfAbsent(
-                "notif_cooldown:user_" + userId,
-                "1", 15, TimeUnit.MINUTES
-        );
+        Boolean success = redisTemplate.opsForValue()
+                .setIfAbsent(
+                        "notif_cooldown:user_" + userId,
+                        "1", 15, TimeUnit.MINUTES);
         return Boolean.TRUE.equals(success);
     }
 
     public boolean isNotificationCooldownActive(Long userId) {
         return Boolean.TRUE.equals(
-                redisTemplate.hasKey("notif_cooldown:user_" + userId)
-        );
+                redisTemplate.hasKey(
+                        "notif_cooldown:user_" + userId));
     }
 
-    // ============================================================
-    // PENDING NOTIFICATIONS
-    // ============================================================
-
-    public void pushPendingNotification(Long userId, String message) {
+    // ── Pending Notifications ────────────────────────────────────
+    public void pushPendingNotification(
+            Long userId, String message) {
         redisTemplate.opsForList().rightPush(
-                "user:" + userId + ":pending_notifs", message
-        );
+                "user:" + userId + ":pending_notifs", message);
     }
-
-    // ============================================================
-    // ATOMIC POP + DELETE NOTIFICATIONS (Lua script)
-    // ============================================================
 
     @SuppressWarnings("unchecked")
     public List<String> popAllPendingNotifications(Long userId) {
         List<String> result = redisTemplate.execute(
                 POP_NOTIFS_SCRIPT,
                 Collections.singletonList(
-                        "user:" + userId + ":pending_notifs"
-                )
+                        "user:" + userId + ":pending_notifs")
         );
         return result != null ? result : List.of();
     }
 
-    // ============================================================
-    // SAFE SCAN FOR NOTIFICATION KEYS
-    // ============================================================
-
+    // ── Safe SCAN ────────────────────────────────────────────────
     public Set<String> getAllPendingNotifKeys() {
         Set<String> keys = new HashSet<>();
-
         ScanOptions options = ScanOptions.scanOptions()
                 .match("user:*:pending_notifs")
                 .count(100)
                 .build();
-
-
-        try (Cursor<String> cursor = redisTemplate.scan(options)) {
+        try (Cursor<String> cursor =
+                     redisTemplate.scan(options)) {
             while (cursor.hasNext()) {
                 keys.add(cursor.next());
             }
         }
-
         return keys;
     }
 }

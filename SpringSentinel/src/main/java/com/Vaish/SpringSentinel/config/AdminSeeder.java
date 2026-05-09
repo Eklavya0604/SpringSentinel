@@ -24,11 +24,16 @@ public class AdminSeeder {
             if (userRepository.findByUsername("admin").isEmpty()) {
                 User admin = new User();
                 admin.setUsername("admin");
-                admin.setPassword(passwordEncoder.encode("admin123"));
+                admin.setPassword(
+                        passwordEncoder.encode("admin123")
+                );
                 admin.setRole(Role.ADMIN);
                 admin.setPremium(true);
                 userRepository.save(admin);
-                log.info("Admin user seeded — username: admin, password: admin123");
+                log.info(
+                        "✅ Admin seeded — username: admin, " +
+                                "password: admin123"
+                );
             }
         };
     }

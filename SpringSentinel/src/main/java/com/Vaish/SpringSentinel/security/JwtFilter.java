@@ -6,9 +6,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication
+        .UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority
+        .SimpleGrantedAuthority;
+import org.springframework.security.core.context
+        .SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -26,71 +29,68 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
+            FilterChain filterChain)
+            throws ServletException, IOException {
 
         String path = request.getServletPath();
 
-        // ========================================================
-        // BYPASS — Public paths (no JWT needed)
-        // ========================================================
-
+        // ── Bypass public paths ──────────────────────────────────
         if (isPublicPath(path)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ========================================================
-        // JWT AUTHENTICATION
-        // ========================================================
+        String authHeader =
+                request.getHeader("Authorization");
 
-        String authHeader = request.getHeader("Authorization");
-
-        // ── No token provided ────────────────────────────────────
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        // ── No token ─────────────────────────────────────────────
+        if (authHeader == null ||
+                !authHeader.startsWith("Bearer ")) {
+            response.setStatus(
+                    HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write(
-                    "{\"status\":401,\"message\":\"Authorization header missing or invalid\"}"
+                    "{\"status\":401,\"message\":" +
+                            "\"Authorization header missing or invalid\"}"
             );
             return;
         }
 
         String token = authHeader.substring(7);
 
-        // ── Token invalid or expired ─────────────────────────────
+        // ── Invalid token ────────────────────────────────────────
         if (!jwtService.isTokenValid(token)) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setStatus(
+                    HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType("application/json");
             response.getWriter().write(
-                    "{\"status\":401,\"message\":\"Invalid or expired token\"}"
+                    "{\"status\":401,\"message\":" +
+                            "\"Invalid or expired token\"}"
             );
             return;
         }
 
-        // ── Token valid → resolve user → set authentication ──────
+        // ── Valid token → load user → set auth ───────────────────
         String username = jwtService.extractUsername(token);
 
-        var user = userRepository.findByUsername(username)
+        var user = userRepository
+                .findByUsername(username)
                 .orElseThrow();
 
         var authority = new SimpleGrantedAuthority(
                 "ROLE_" + user.getRole().name()
         );
 
-        var authentication = new UsernamePasswordAuthenticationToken(
-                username, null, List.of(authority)
-        );
+        var authentication =
+                new UsernamePasswordAuthenticationToken(
+                        username, null, List.of(authority)
+                );
 
         SecurityContextHolder.getContext()
                 .setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
     }
-
-    // ============================================================
-    // PUBLIC PATHS HELPER
-    // ============================================================
 
     private boolean isPublicPath(String path) {
         return path.startsWith("/api/auth")    ||

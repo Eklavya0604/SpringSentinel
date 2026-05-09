@@ -12,36 +12,19 @@ public class NotificationService {
     private final RedisService redisService;
 
     public void handleBotInteraction(
-            Long userId,
-            String message
-    ) {
-
-        // ========================================================
-        // TRY TO ACQUIRE NOTIFICATION COOLDOWN
-        // ========================================================
+            Long userId, String message) {
 
         boolean allowed =
-                redisService.trySetNotificationCooldown(
-                        userId
-                );
-
-        // ========================================================
-        // SEND IMMEDIATELY
-        // ========================================================
+                redisService.trySetNotificationCooldown(userId);
 
         if (allowed) {
-
             log.info(
                     "Push Notification Sent to User {}: {}",
-                    userId,
-                    message
+                    userId, message
             );
-
         } else {
-
             redisService.pushPendingNotification(
-                    userId,
-                    message
+                    userId, message
             );
         }
     }

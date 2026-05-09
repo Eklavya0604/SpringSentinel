@@ -16,28 +16,30 @@ public class Comment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // set by server — never from client
+    // ── Set by server — never from client ────────────────────────
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @Column(name = "post_id", nullable = false)
     private Long postId;
 
-    // set by server from JWT (USER) or request body (BOT)
+    // ── For BOT: client sends botId. For USER: set from JWT ──────
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 
-    // USER or BOT — client sends this
+    // ── CLIENT sends "BOT" or "USER" ─────────────────────────────
     @Column(name = "author_type")
     private String authorType;
 
     @NotBlank(message = "Content cannot be empty")
-    @Size(max = 500, message = "Content cannot exceed 500 characters")
+    @Size(max = 500,
+            message = "Content cannot exceed 500 characters")
     @Column(columnDefinition = "TEXT")
     private String content;
 
-    // null = top level comment, set by client to reply to a comment
+    // ── null = top level, set by client to reply to a comment ────
     @Column(name = "parent_comment_id")
     private Long parentCommentId;
 
-    // calculated server-side — client can never overwrite this
+    // ── Calculated server-side — client cannot set this ──────────
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     @Column(name = "depth_level")
     private int depthLevel = 0;

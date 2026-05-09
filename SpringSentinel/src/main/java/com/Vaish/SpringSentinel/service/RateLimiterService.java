@@ -15,37 +15,28 @@ public class RateLimiterService {
 
     private static final int MAX_REQUESTS_PER_MINUTE = 100;
 
-    // ============================================================
-    // ATOMIC RATE LIMIT SCRIPT
-    // ============================================================
+    // ── Cached Lua script ────────────────────────────────────────
+    private static final DefaultRedisScript<Long> RATE_LIMIT_SCRIPT;
 
-    private static final String RATE_LIMIT_SCRIPT =
-
-            "local current = redis.call('INCR', KEYS[1]) " +
-
-                    "if current == 1 then " +
-                    "   redis.call('EXPIRE', KEYS[1], ARGV[1]) " +
-                    "end " +
-
-                    "return current";
+    static {
+        RATE_LIMIT_SCRIPT = new DefaultRedisScript<>();
+        RATE_LIMIT_SCRIPT.setScriptText(
+                "local current = redis.call('INCR', KEYS[1]) " +
+                        "if current == 1 then " +
+                        "   redis.call('EXPIRE', KEYS[1], ARGV[1]) " +
+                        "end " +
+                        "return current"
+        );
+        RATE_LIMIT_SCRIPT.setResultType(Long.class);
+    }
 
     public boolean isRateLimited(String ipAddress) {
-
-        String key = "rate_limit:" + ipAddress;
-
-        DefaultRedisScript<Long> script =
-                new DefaultRedisScript<>();
-
-        script.setScriptText(RATE_LIMIT_SCRIPT);
-
-        script.setResultType(Long.class);
-
         Long count = redisTemplate.execute(
-                script,
-                Collections.singletonList(key),
+                RATE_LIMIT_SCRIPT,
+                Collections.singletonList(
+                        "rate_limit:" + ipAddress),
                 "60"
         );
-
         return count != null &&
                 count > MAX_REQUESTS_PER_MINUTE;
     }

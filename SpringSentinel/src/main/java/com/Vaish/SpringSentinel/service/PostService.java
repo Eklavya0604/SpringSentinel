@@ -25,27 +25,22 @@ public class PostService {
     private static final int MAX_BOT_REPLIES = 100;
     private static final int MAX_DEPTH = 20;
 
-    // ============================================================
-    // HELPER — resolve User from JWT username
-    // ============================================================
-
+    // ── Resolve user from JWT username ───────────────────────────
     private User resolveUser(String username) {
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "User not found: " + username));
+                        HttpStatus.NOT_FOUND,
+                        "User not found: " + username));
     }
 
-    // ============================================================
-    // HELPER — calculate depth from parent comment
-    // ============================================================
-
+    // ── Calculate depth from parent comment ──────────────────────
     private int calculateDepth(Long parentCommentId) {
-        if (parentCommentId == null) {
-            return 0;  // top level comment
-        }
-        Comment parent = commentRepository.findById(parentCommentId)
+        if (parentCommentId == null) return 0;
+        Comment parent = commentRepository
+                .findById(parentCommentId)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Parent comment not found"));
+                        HttpStatus.NOT_FOUND,
+                        "Parent comment not found"));
         return parent.getDepthLevel() + 1;
     }
 
@@ -65,15 +60,22 @@ public class PostService {
     // ============================================================
 
     @Transactional
-    public Comment addComment(Long postId, Comment comment, String username) {
+    public Comment addComment(
+            Long postId,
+            Comment comment,
+            String username) {
 
         comment.setPostId(postId);
 
         // ── Calculate depth server-side ──────────────────────────
-        int depth = calculateDepth(comment.getParentCommentId());
+        int depth = calculateDepth(
+                comment.getParentCommentId()
+        );
         comment.setDepthLevel(depth);
 
-        boolean isBot = "BOT".equalsIgnoreCase(comment.getAuthorType());
+        boolean isBot = "BOT".equalsIgnoreCase(
+                comment.getAuthorType()
+        );
 
         // ========================================================
         // BOT COMMENT FLOW
@@ -90,23 +92,27 @@ public class PostService {
 
             // ── 2. Fetch Post ────────────────────────────────────
             Post post = postRepository.findById(postId)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.NOT_FOUND, "Post not found"));
+                    .orElseThrow(() ->
+                            new ResponseStatusException(
+                                    HttpStatus.NOT_FOUND,
+                                    "Post not found"));
 
             Long humanId = post.getAuthorId();
 
-            // ── 3. Horizontal Cap (Lua atomic) ────────────────────
-            boolean allowed = redisService.tryIncrementBotCount(
-                    postId, MAX_BOT_REPLIES);
+            // ── 3. Horizontal Cap (Lua atomic) ───────────────────
+            boolean allowed = redisService
+                    .tryIncrementBotCount(postId, MAX_BOT_REPLIES);
+
             if (!allowed) {
                 throw new ResponseStatusException(
                         HttpStatus.TOO_MANY_REQUESTS,
                         "Post bot reply limit of 100 reached");
             }
 
-            // ── 4. Cooldown Check ────────────────────────────────
-            boolean cooldownAcquired = redisService.trySetCooldown(
-                    comment.getAuthorId(), humanId);
+            // ── 4. Cooldown Check (atomic setIfAbsent) ───────────
+            boolean cooldownAcquired = redisService
+                    .trySetCooldown(comment.getAuthorId(), humanId);
+
             if (!cooldownAcquired) {
                 redisService.decrementBotCount(postId);
                 throw new ResponseStatusException(
@@ -120,17 +126,19 @@ public class PostService {
                 saved = commentRepository.save(comment);
             } catch (Exception e) {
                 redisService.decrementBotCount(postId);
-                redisService.removeCooldown(comment.getAuthorId(), humanId);
+                redisService.removeCooldown(
+                        comment.getAuthorId(), humanId);
                 throw e;
             }
 
-            // ── 6. Update Virality (+1 for bot reply) ────────────
+            // ── 6. Update Virality (+1 bot reply) ────────────────
             redisService.incrementVirality(postId, 1);
 
             // ── 7. Trigger Notification ──────────────────────────
             notificationService.handleBotInteraction(
                     humanId,
-                    "Bot " + comment.getAuthorId() + " replied to your post");
+                    "Bot " + comment.getAuthorId()
+                            + " replied to your post");
 
             return saved;
         }
@@ -139,7 +147,7 @@ public class PostService {
         // HUMAN COMMENT FLOW
         // ========================================================
 
-        // Depth check for human comments too
+        // ── Depth check for humans too ───────────────────────────
         if (depth > MAX_DEPTH) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,

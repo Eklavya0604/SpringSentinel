@@ -20,20 +20,28 @@ public class SwaggerConfig {
                         .version("1.0")
                         .description("""
                     ## 🛡️ SpringSentinel
-                    
+
                     High-performance API gateway with Redis guardrails.
-                    
+
                     ### How to authenticate:
-                    1. Call **/api/auth/register** or **/api/auth/login**
+                    1. Call **/api/auth/login** (admin/admin123)
                     2. Copy the token from response
                     3. Click **Authorize 🔒** above
                     4. Paste token and click Authorize
-                    
+
+                    ### Default Admin Credentials:
+                    - username: **admin**
+                    - password: **admin123**
+
                     ### Redis Guardrails:
                     - **Horizontal Cap** — Max 100 bot replies per post
                     - **Vertical Cap** — Max depth level 20
                     - **Cooldown Cap** — 10 min between bot-human interactions
                     - **Rate Limit** — 100 requests/min per IP
+                    
+                    ### Roles:
+                    - **USER** — Can create posts, comment, like
+                    - **ADMIN** — Everything + manage bots + promote users
                     """)
                         .contact(new Contact()
                                 .name("SpringSentinel")

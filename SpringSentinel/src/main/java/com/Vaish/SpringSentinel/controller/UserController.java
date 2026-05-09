@@ -18,7 +18,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
-@Tag(name = "4. Users", description = "User management endpoints")
+@Tag(name = "4. Users",
+        description = "User management endpoints")
 @SecurityRequirement(name = "Bearer Authentication")
 public class UserController {
 
@@ -28,9 +29,12 @@ public class UserController {
     @Operation(
             summary = "Get user by ID",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "User found"),
-                    @ApiResponse(responseCode = "404", description = "User not found"),
-                    @ApiResponse(responseCode = "401", description = "Unauthorized - JWT required")
+                    @ApiResponse(responseCode = "200",
+                            description = "User found"),
+                    @ApiResponse(responseCode = "404",
+                            description = "User not found"),
+                    @ApiResponse(responseCode = "401",
+                            description = "Unauthorized")
             }
     )
     @GetMapping("/{id}")
@@ -38,32 +42,39 @@ public class UserController {
             @Parameter(description = "User ID", example = "1")
             @PathVariable Long id) {
         return ResponseEntity.ok(
-                userRepository.findById(id).orElseThrow(
-                        () -> new ResponseStatusException(
-                                HttpStatus.NOT_FOUND, "User not found")));
+                userRepository.findById(id)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.NOT_FOUND, "User not found"))
+        );
     }
 
-    // ── Promote user to admin ────────────────────────────────────
+    // ── Promote to admin ─────────────────────────────────────────
     @Operation(
-            summary = "Promote user to admin",
-            description = "Only an existing ADMIN can call this endpoint. Promotes any user to ADMIN role.",
+            summary = "Promote user to ADMIN",
+            description = "Only existing ADMIN can call this.",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "User promoted to ADMIN"),
-                    @ApiResponse(responseCode = "403", description = "Forbidden - ADMIN role required"),
-                    @ApiResponse(responseCode = "404", description = "User not found"),
-                    @ApiResponse(responseCode = "401", description = "Unauthorized - JWT required")
+                    @ApiResponse(responseCode = "200",
+                            description = "User promoted"),
+                    @ApiResponse(responseCode = "403",
+                            description = "Forbidden - ADMIN only"),
+                    @ApiResponse(responseCode = "404",
+                            description = "User not found"),
+                    @ApiResponse(responseCode = "401",
+                            description = "Unauthorized")
             }
     )
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{id}/promote")
     public ResponseEntity<String> promoteToAdmin(
-            @Parameter(description = "User ID to promote", example = "2")
+            @Parameter(description = "User ID", example = "2")
             @PathVariable Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
         user.setRole(Role.ADMIN);
         userRepository.save(user);
-        return ResponseEntity.ok("User " + user.getUsername() + " promoted to ADMIN");
+        return ResponseEntity.ok(
+                "User " + user.getUsername() + " promoted to ADMIN"
+        );
     }
 }

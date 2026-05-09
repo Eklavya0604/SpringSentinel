@@ -22,45 +22,27 @@ public class JwtService {
 
     private SecretKey signingKey;
 
-    // ============================================================
-    // INITIALIZE SECRET KEY
-    // ============================================================
-
     @PostConstruct
     public void init() {
-
-        // ── Fail fast if secret is too short ─────────────────
         if (secret == null || secret.length() < 32) {
             throw new IllegalStateException(
                     "JWT secret must be at least 32 characters! " +
-                            "Current length: " +
-                            (secret == null ? 0 : secret.length())
-            );
+                            "Length: " +
+                            (secret == null ? 0 : secret.length()));
         }
-
         signingKey = Keys.hmacShaKeyFor(
-                secret.getBytes(StandardCharsets.UTF_8)
-        );
+                secret.getBytes(StandardCharsets.UTF_8));
     }
-
-    // ============================================================
-    // GENERATE TOKEN
-    // ============================================================
 
     public String generateToken(String username) {
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date())
                 .expiration(new Date(
-                        System.currentTimeMillis() + expiration
-                ))
+                        System.currentTimeMillis() + expiration))
                 .signWith(signingKey)
                 .compact();
     }
-
-    // ============================================================
-    // EXTRACT USERNAME
-    // ============================================================
 
     public String extractUsername(String token) {
         return Jwts.parser()
@@ -70,10 +52,6 @@ public class JwtService {
                 .getPayload()
                 .getSubject();
     }
-
-    // ============================================================
-    // VALIDATE TOKEN
-    // ============================================================
 
     public boolean isTokenValid(String token) {
         try {
