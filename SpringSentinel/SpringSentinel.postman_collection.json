@@ -1,0 +1,408 @@
+{
+  "info": {
+    "name": "SpringSentinel API Collection",
+    "description": "Complete Postman collection for SpringSentinel APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "jwtToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication APIs",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwtToken', jsonData.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"test123\",\n  \"isPremium\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwtToken', jsonData.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"test123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User APIs",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"john\",\n  \"password\": \"john123\",\n  \"isPremium\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bot APIs",
+      "item": [
+        {
+          "name": "Create Bot",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"SentinelBot\",\n  \"personaDescription\": \"AI moderation bot that prevents spam and abusive behavior.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/bots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bots"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Bot By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/bots/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "bots",
+                "1"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Post APIs",
+      "item": [
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 1,\n  \"authorType\": \"USER\",\n  \"content\": \"Hello SpringSentinel!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Bot Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 1,\n  \"authorType\": \"BOT\",\n  \"content\": \"Nice post!\",\n  \"depthLevel\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/1/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Human Comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 2,\n  \"authorType\": \"USER\",\n  \"content\": \"Amazing platform!\",\n  \"depthLevel\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/1/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1",
+                "comments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Like Post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/1/like?likerType=USER",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1",
+                "like"
+              ],
+              "query": [
+                {
+                  "key": "likerType",
+                  "value": "USER"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Virality Score",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/1/virality",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1",
+                "virality"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Concurrency Stress Test",
+      "item": [
+        {
+          "name": "Concurrent Bot Comment Request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwtToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": 99,\n  \"authorType\": \"BOT\",\n  \"content\": \"Stress test comment\",\n  \"depthLevel\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/1/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1",
+                "comments"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

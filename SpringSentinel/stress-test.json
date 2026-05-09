@@ -1,0 +1,18 @@
+{
+  "info": {
+    "name": "Stress Test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [{
+    "name": "Bot Comment Spam",
+    "request": {
+      "method": "POST",
+      "url": "http://localhost:8080/api/posts/1/comments",
+      "header": [{ "key": "Content-Type", "value": "application/json" }],
+      "body": {
+        "mode": "raw",
+        "raw": "{\"authorId\": {{$randomInt}}, \"authorType\": \"BOT\", \"content\": \"Spam!\", \"depthLevel\": 1}"
+      }
+    }
+  }]
+}
